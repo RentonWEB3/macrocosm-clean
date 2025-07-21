@@ -2,7 +2,15 @@ import os
 import json
 import asyncio
 from datetime import datetime
-from twikit import Client, errors as twikit_errors
+try:
+    from twikit import Client, errors as twikit_errors
+except ImportError:  # pragma: no cover - twikit may not be installed during tests
+    Client = None
+
+    class _DummyTwikitErrors:
+        NotFound = Exception
+
+    twikit_errors = _DummyTwikitErrors()
 
 CONFIG_PATH = "config.json"
 
@@ -14,6 +22,9 @@ def is_valid(tweet):
     return bool(text)
 
 async def scrape_twitter():
+    if Client is None:
+        raise ImportError("twikit package is required for scrape_twitter")
+
     cfg = load_config()
     client = Client()
     client.load_cookies(cfg["cookies_file"])
