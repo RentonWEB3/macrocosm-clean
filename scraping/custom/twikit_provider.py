@@ -1,6 +1,7 @@
 import json
 import asyncio
-from scraping.scraper import Scraper, ValidationResult, HFValidationResult
+from scraping.scraper import Scraper, ValidationResult, HFValidationResult, ScraperId
+from scraping.coordinator import CoordinatorConfig
 from common.data import DataEntity, DataLabel, DataSource
 import twikit_scraper  # ваш модуль
 
@@ -8,7 +9,25 @@ class TwikitProvider(Scraper):
     def __init__(self, config=None, session=None):
         self.session = session
 
-        cfg = config if isinstance(config, dict) else {}
+        cfg = {}
+        # ``config`` may either be the raw dictionary passed in via the
+        # ``ScraperProvider`` or the ``CoordinatorConfig`` instance used by the
+        # ``ScraperCoordinator``. Handle both cases here.
+        if isinstance(config, dict):
+            cfg = config
+        elif isinstance(config, CoordinatorConfig):
+            scraper_cfg = config.scraper_configs.get(ScraperId.X_MICROWORLDS)
+            if scraper_cfg and scraper_cfg.labels_to_scrape:
+                label_cfg = scraper_cfg.labels_to_scrape[0]
+                cfg = {
+                    "cookies_path": "twitter_cookies.json",
+                    "labels_to_scrape": [
+                        {
+                            "label_choices": [lbl.value for lbl in (label_cfg.label_choices or [])],
+                            "max_data_entities": label_cfg.max_data_entities or 100,
+                        }
+                    ],
+                }
 
         self.cookies_file = cfg.get("cookies_path", "twitter_cookies.json")
         labels_cfg = cfg.get("labels_to_scrape", [])
