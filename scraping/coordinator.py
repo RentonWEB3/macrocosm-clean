@@ -228,12 +228,14 @@ class ScraperCoordinator:
     async def _start(self):
         session = aiohttp.ClientSession()
         self.session = session
+
         factories = DEFAULT_FACTORIES.copy()
-        factories[ScraperId.X_MICROWORLDS] = functools.partial(
-            TwikitProvider,
-            self.scraping_config,  # конфиг, переданный из __init__
-            self.session          # HTTP-сессия, которую вы используете
+        factories[ScraperId.X_MICROWORLDS] = (
+            lambda _cfg=None, _session=None: TwikitProvider(
+                self.scraping_config, self.session
+            )
         )
+
         self.provider = ScraperProvider(factories=factories)
         workers = []
         for i in range(self.max_workers):

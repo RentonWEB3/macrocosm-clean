@@ -1,18 +1,23 @@
 import json
 import asyncio
 from scraping.scraper import Scraper, ValidationResult, HFValidationResult
-from common.data import DataEntity, DataSource
+from common.data import DataEntity, DataLabel, DataSource
 import twikit_scraper  # ваш модуль
 
 class TwikitProvider(Scraper):
-    def __init__(self, config, session):
+    def __init__(self, config=None, session=None):
         self.session = session
-        # config — это тот, что из scraping_config.json
-        self.cookies_file = config["cookies_path"]
-        labels_cfg = config.get("labels_to_scrape", [])
-        # Предполагаем, одна группа labels_to_scrape
-        self.search_keywords = labels_cfg[0]["label_choices"] if labels_cfg else []
-        self.tweets_per_keyword = labels_cfg[0]["max_data_entities"] if labels_cfg else 100
+
+        cfg = config if isinstance(config, dict) else {}
+
+        self.cookies_file = cfg.get("cookies_path", "twitter_cookies.json")
+        labels_cfg = cfg.get("labels_to_scrape", [])
+        self.search_keywords = (
+            labels_cfg[0].get("label_choices", []) if labels_cfg else []
+        )
+        self.tweets_per_keyword = (
+            labels_cfg[0].get("max_data_entities", 100) if labels_cfg else 100
+        )
 
     def _write_temp_config(self):
         # Записываем файл config.json для twikit_scraper
@@ -35,15 +40,17 @@ class TwikitProvider(Scraper):
 
         entities = []
         for i in items:
-            # полей tweet: uri, datetime, source, label={"name":term}, content, content_size_bytes
-            entities.append(DataEntity(
-                uri=i["uri"],
-                datetime=i["datetime"],
-                source=DataSource.TWITTER,
-                label=i["label"]["name"],
-                content=i["content"],
-                content_size_bytes=i["content_size_bytes"]
-            ))
+            content_bytes = i["content"].encode("utf-8")
+            entities.append(
+                DataEntity(
+                    uri=i["uri"],
+                    datetime=i["datetime"],
+                    source=DataSource.X,
+                    label=DataLabel(value=i["label"]["name"]),
+                    content=content_bytes,
+                    content_size_bytes=len(content_bytes),
+                )
+            )
         return entities
 
     async def validate(self, entities):
@@ -104,3 +111,4 @@ class TwikitProvider(Scraper):
             validation_percentage=validation_percentage,
             reason=f"Validation Percentage = {validation_percentage}",
         )
+
