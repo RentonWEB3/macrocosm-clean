@@ -24,11 +24,15 @@ class TwikitProvider(Scraper):
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False)
 
-    def scrape(self):
+    async def scrape(self, scrape_config=None):
+        """Scrapes twitter using the ``twikit`` helper module."""
+
         # Подготовим config.json
         self._write_temp_config()
+
         # Запустим асинхронную функцию twikit_scraper.scrape_twitter()
-        items = asyncio.run(twikit_scraper.scrape_twitter())
+        items = await twikit_scraper.scrape_twitter()
+
         entities = []
         for i in items:
             # полей tweet: uri, datetime, source, label={"name":term}, content, content_size_bytes
@@ -42,8 +46,24 @@ class TwikitProvider(Scraper):
             ))
         return entities
 
-    def validate(self):
-        return super().validate()
+    async def validate(self, entities):
+        """Perform a very basic validation of scraped entities."""
+
+        if not entities:
+            return []
+
+        results = []
+        for entity in entities:
+            is_valid = bool(getattr(entity, "content", "").strip())
+            results.append(
+                ValidationResult(
+                    is_valid=is_valid,
+                    content_size_bytes_validated=len(entity.content.encode("utf-8")) if entity.content else 0,
+                    reason="" if is_valid else "Empty content",
+                )
+            )
+
+        return results
 
     async def validate_hf(self, entities) -> HFValidationResult:
         """Validate HF dataset entries.

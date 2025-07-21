@@ -7,6 +7,7 @@ import bittensor as bt
 import datetime as dt
 from typing import Dict, List, Optional
 import numpy
+import aiohttp
 from pydantic import Field, PositiveInt, ConfigDict
 from common.date_range import DateRange
 from common.data import DataLabel, DataSource, StrictBaseModel, TimeBucket
@@ -187,9 +188,16 @@ class ScraperCoordinator:
         miner_storage: MinerStorage,
         config: CoordinatorConfig,
     ):
-        factories = DEFAULT_FACTORIES.copy()
-        factories[ScraperId.X_MICROWORLDS] = partial(TwikitProvider, self.scraping_config, self.session)
-        self.provider = ScraperProvider(factories=factories)
+        # Store the configuration so it can be passed to factories later.
+        self.scraping_config = config
+
+        # HTTP session will be created in ``_start``.
+        self.session = None
+
+        # Use the provided ``scraper_provider`` for all scraper factories. The
+        # TwikitProvider factory will be customized once the session is
+        # available.
+        self.provider = scraper_provider
         self.storage = miner_storage
         self.config = config
 
