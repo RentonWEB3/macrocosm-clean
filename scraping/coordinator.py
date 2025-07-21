@@ -13,7 +13,7 @@ from common.date_range import DateRange
 from common.data import DataLabel, DataSource, StrictBaseModel, TimeBucket
 from functools import partial
 from scraping.provider import DEFAULT_FACTORIES, ScraperProvider
-from scraping.scraper import ScraperId
+from scraping.scraper import ScraperId, ScrapeConfig
 from scraping.custom.twikit_provider import TwikitProvider
 from storage.miner.miner_storage import MinerStorage
 
