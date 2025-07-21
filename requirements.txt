@@ -1,5 +1,5 @@
 apify-client==1.6.1
-asyncpraw==7.8.0
+asyncpraw==7.8.1
 bittensor==9.8.2
 jupyter==1.0.0
 numpy==2.0.1

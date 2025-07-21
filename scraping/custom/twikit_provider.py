@@ -3,21 +3,36 @@ import asyncio
 from scraping.scraper import Scraper, ValidationResult, HFValidationResult
 from common.data import DataEntity, DataLabel, DataSource
 import twikit_scraper  # ваш модуль
+from datetime import datetime
 
 class TwikitProvider(Scraper):
     def __init__(self, config=None, session=None):
         self.session = session
+        scraper_key = "X.microworlds"   # без импортов
 
-        cfg = config if isinstance(config, dict) else {}
+        # Если передали CoordinatorConfig (есть поле scraper_configs)
+        if hasattr(config, "scraper_configs"):
+            scraper_cfg = config.scraper_configs.get(scraper_key)
+        else:
+            scraper_cfg = config  # возможно уже ScraperConfig
 
-        self.cookies_file = cfg.get("cookies_path", "twitter_cookies.json")
-        labels_cfg = cfg.get("labels_to_scrape", [])
-        self.search_keywords = (
-            labels_cfg[0].get("label_choices", []) if labels_cfg else []
-        )
-        self.tweets_per_keyword = (
-            labels_cfg[0].get("max_data_entities", 100) if labels_cfg else 100
-        )
+        if scraper_cfg is None:
+            print("WARN: scraper_cfg for X.microworlds not found")
+            self.search_keywords = []
+            self.tweets_per_keyword = 100
+            self.cookies_file = "twitter_cookies.json"
+        else:
+            labels_cfg = getattr(scraper_cfg, "labels_to_scrape", [])
+            if labels_cfg:
+                first = labels_cfg[0]
+                self.search_keywords = [lbl.value for lbl in getattr(first, "label_choices", [])]
+                self.tweets_per_keyword = getattr(first, "max_data_entities", 100)
+            else:
+                self.search_keywords = []
+                self.tweets_per_keyword = 100
+            self.cookies_file = "twitter_cookies.json"
+
+        print("DEBUG Twikit search_keywords:", self.search_keywords, "tweets_per_keyword:", self.tweets_per_keyword, "cookies_file:", self.cookies_file)
 
     def _write_temp_config(self):
         # Записываем файл config.json для twikit_scraper
@@ -37,14 +52,20 @@ class TwikitProvider(Scraper):
 
         # Запустим асинхронную функцию twikit_scraper.scrape_twitter()
         items = await twikit_scraper.scrape_twitter()
-
         entities = []
         for i in items:
+            raw_dt = i["datetime"]
+            try:
+                dt_obj = datetime.strptime(raw_dt, "%a %b %d %H:%M:%S %z %Y")
+            except Exception as e:
+                print("DEBUG cannot parse datetime:", raw_dt, e)
+                continue  # пропускаем проблемный элемент
+
             content_bytes = i["content"].encode("utf-8")
             entities.append(
                 DataEntity(
                     uri=i["uri"],
-                    datetime=i["datetime"],
+                    datetime=dt_obj,  # ВАЖНО: dt_obj, НЕ raw_dt
                     source=DataSource.X,
                     label=DataLabel(value=i["label"]["name"]),
                     content=content_bytes,

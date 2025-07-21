@@ -80,7 +80,7 @@ class RedditCustomScraper(Scraper):
                         client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
                         username=os.getenv("REDDIT_USERNAME"),
                         password=os.getenv("REDDIT_PASSWORD"),
-                        user_agent=self.USER_AGENT,
+                        user_agent=f"python:macrocosm_clean (by u/{os.getenv('REDDIT_USERNAME')})",
                 ) as reddit:
 
                     # ---- A) POST branch ----

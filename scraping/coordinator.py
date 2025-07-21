@@ -231,9 +231,7 @@ class ScraperCoordinator:
 
         factories = DEFAULT_FACTORIES.copy()
         factories[ScraperId.X_MICROWORLDS] = (
-            lambda _cfg=None, _session=None: TwikitProvider(
-                self.scraping_config, self.session
-            )
+            lambda cfg=None, session=None: TwikitProvider(cfg, session)
         )
 
         self.provider = ScraperProvider(factories=factories)
