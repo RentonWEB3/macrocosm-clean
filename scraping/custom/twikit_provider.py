@@ -1,14 +1,12 @@
-import os
 import json
 import asyncio
-from datetime import datetime
-from scraping.scraper import Scraper
+from scraping.scraper import Scraper, ValidationResult, HFValidationResult
 from common.data import DataEntity, DataSource
 import twikit_scraper  # ваш модуль
 
 class TwikitProvider(Scraper):
     def __init__(self, config, session):
-        super().__init__(config, session)
+        self.session = session
         # config — это тот, что из scraping_config.json
         self.cookies_file = config["cookies_path"]
         labels_cfg = config.get("labels_to_scrape", [])
@@ -46,3 +44,43 @@ class TwikitProvider(Scraper):
 
     def validate(self):
         return super().validate()
+
+    async def validate_hf(self, entities) -> HFValidationResult:
+        """Validate HF dataset entries.
+
+        This basic implementation simply marks all provided entities as valid
+        without performing any external checks. It returns an
+        ``HFValidationResult`` mirroring the structure used by other scrapers so
+        that the class satisfies :class:`Scraper`'s abstract interface.
+
+        Args:
+            entities: An iterable of HF dataset rows represented as dictionaries.
+
+        Returns:
+            HFValidationResult indicating success for all rows.
+        """
+
+        if not entities:
+            return HFValidationResult(
+                is_valid=True,
+                validation_percentage=100.0,
+                reason="No entities to validate",
+            )
+
+        results = [
+            ValidationResult(
+                is_valid=True,
+                content_size_bytes_validated=0,
+                reason="",
+            )
+            for _ in entities
+        ]
+
+        valid_count = len([r for r in results if r.is_valid])
+        validation_percentage = (valid_count / len(results)) * 100
+
+        return HFValidationResult(
+            is_valid=True,
+            validation_percentage=validation_percentage,
+            reason=f"Validation Percentage = {validation_percentage}",
+        )
