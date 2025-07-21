@@ -17,7 +17,7 @@ DEFAULT_FACTORIES = {
     # For backwards compatibility with old configs, remap x.flash to x.apidojo.
     ScraperId.X_FLASH: MicroworldsTwitterScraper,
     ScraperId.REDDIT_CUSTOM: RedditCustomScraper,
-    ScraperId.X_MICROWORLDS: lambda cfg, session: TwikitProvider(cfg, session),
+    ScraperId.X_MICROWORLDS: TwikitProvider,
     ScraperId.X_APIDOJO: ApiDojoTwitterScraper,
     ScraperId.X_QUACKER: QuackerUrlScraper,
     ScraperId.YOUTUBE_CUSTOM_TRANSCRIPT: YouTubeTranscriptScraper,
