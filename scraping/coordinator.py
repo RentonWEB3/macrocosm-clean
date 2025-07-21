@@ -7,6 +7,7 @@ import bittensor as bt
 import datetime as dt
 from typing import Dict, List, Optional
 import numpy
+import aiohttp
 from pydantic import Field, PositiveInt, ConfigDict
 from common.date_range import DateRange
 from common.data import DataLabel, DataSource, StrictBaseModel, TimeBucket
@@ -187,11 +188,10 @@ class ScraperCoordinator:
         miner_storage: MinerStorage,
         config: CoordinatorConfig,
     ):
-        factories = DEFAULT_FACTORIES.copy()
-        factories[ScraperId.X_MICROWORLDS] = partial(TwikitProvider, self.scraping_config, self.session)
-        self.provider = ScraperProvider(factories=factories)
+        self.provider = scraper_provider
         self.storage = miner_storage
         self.config = config
+        self.scraping_config = config
 
         self.tracker = ScraperCoordinator.Tracker(self.config, dt.datetime.utcnow())
         self.max_workers = 5
@@ -223,8 +223,7 @@ class ScraperCoordinator:
         factories = DEFAULT_FACTORIES.copy()
         factories[ScraperId.X_MICROWORLDS] = functools.partial(
             TwikitProvider,
-            self.scraping_config,  # конфиг, переданный из __init__
-            self.session          # HTTP-сессия, которую вы используете
+            session=session,
         )
         self.provider = ScraperProvider(factories=factories)
         workers = []
@@ -248,7 +247,7 @@ class ScraperCoordinator:
                 continue
 
             for scraper_id in scraper_ids_to_scrape_now:
-                scraper = self.provider.get(scraper_id, self.scraping_config, self.session)
+                scraper = self.provider.get(scraper_id)
 
                 scrape_configs = _choose_scrape_configs(scraper_id, self.config, now)
 

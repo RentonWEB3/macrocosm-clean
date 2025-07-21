@@ -1,20 +1,19 @@
 import os
 import json
 import asyncio
-from datetime import datetime
-from scraping.scraper import Scraper
-from common.data import DataEntity, DataSource
+from scraping.scraper import Scraper, ScrapeConfig
+from common.data import DataEntity, DataSource, DataLabel
 import twikit_scraper  # ваш модуль
 
 class TwikitProvider(Scraper):
-    def __init__(self, config, session):
-        super().__init__(config, session)
-        # config — это тот, что из scraping_config.json
-        self.cookies_file = config["cookies_path"]
-        labels_cfg = config.get("labels_to_scrape", [])
-        # Предполагаем, одна группа labels_to_scrape
-        self.search_keywords = labels_cfg[0]["label_choices"] if labels_cfg else []
-        self.tweets_per_keyword = labels_cfg[0]["max_data_entities"] if labels_cfg else 100
+    """Simple scraper provider that wraps the ``twikit_scraper`` module."""
+
+    def __init__(self, *_args, **_kwargs):
+        # cookies path can be overridden via environment variable
+        self.cookies_file = os.getenv("TWIKIT_COOKIES_FILE", "twitter_cookies.json")
+        self.search_keywords = []
+        self.tweets_per_keyword = 100
+        self.session = _kwargs.get("session")
 
     def _write_temp_config(self):
         # Записываем файл config.json для twikit_scraper
@@ -26,23 +25,34 @@ class TwikitProvider(Scraper):
         with open("config.json", "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False)
 
-    def scrape(self):
-        # Подготовим config.json
+    async def scrape(self, scrape_config: ScrapeConfig) -> list[DataEntity]:
+        """Run the twikit scraper and convert results to ``DataEntity``."""
+
+        # Update search keywords and tweet limits from the scrape config
+        if scrape_config.labels:
+            self.search_keywords = [label.value for label in scrape_config.labels]
+        if scrape_config.entity_limit:
+            self.tweets_per_keyword = scrape_config.entity_limit
+
         self._write_temp_config()
-        # Запустим асинхронную функцию twikit_scraper.scrape_twitter()
-        items = asyncio.run(twikit_scraper.scrape_twitter())
-        entities = []
-        for i in items:
-            # полей tweet: uri, datetime, source, label={"name":term}, content, content_size_bytes
-            entities.append(DataEntity(
-                uri=i["uri"],
-                datetime=i["datetime"],
-                source=DataSource.TWITTER,
-                label=i["label"]["name"],
-                content=i["content"],
-                content_size_bytes=i["content_size_bytes"]
-            ))
+        items = await twikit_scraper.scrape_twitter()
+
+        entities: list[DataEntity] = []
+        for item in items:
+            entities.append(
+                DataEntity(
+                    uri=item["uri"],
+                    datetime=item["datetime"],
+                    source=DataSource.X,
+                    label=DataLabel(value=item["label"]["name"]),
+                    content=item["content"].encode("utf-8")
+                    if isinstance(item["content"], str)
+                    else item["content"],
+                    content_size_bytes=item["content_size_bytes"],
+                )
+            )
         return entities
 
-    def validate(self):
-        return super().validate()
+    async def validate(self, entities):
+        """Twikit scraper currently has no validation step."""
+        return []
