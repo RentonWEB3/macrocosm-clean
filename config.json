@@ -1,1 +1,1 @@
-{"cookies_file": "twitter_cookies.json", "search_keywords": ["bitcoin"], "tweets_per_keyword": 100}
+{"cookies_file": "twitter_cookies.json", "search_keywords": ["bitcoin", "ethereum", "cryptonews", "solana", "cardano", "polkadot", "defi", "uniswap", "trading", "stocks", "zksync", "nft", "web3", "ai", "memecoin", "bittensor"], "tweets_per_keyword": 25}
